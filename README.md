@@ -156,21 +156,3 @@ npm run test:coverage  # с отчётом покрытия (coverage/index.html
 
 Покрыты тестами: валидаторы, middleware (auth, role, cache), контроллер
 заказов с моками транзакций и моделей, producer очереди.
-
-## Реализованные практики (П25–П28)
-
-- **П25 — Сборка и оптимизация (Vite):** lazy loading маршрутов через `React.lazy`
-  + `Suspense`, `rollup-plugin-visualizer` для анализа бандла, ручное разделение
-  чанков (`manualChunks`).
-- **П26 — GraphQL (Apollo Server):** endpoint `POST /graphql` (через прокси
-  Nginx — `http://localhost/graphql`). Схема покрывает `Product`, `Review`,
-  `User`, `Order`, `OrderItem` со связями. Apollo Sandbox доступен в браузере
-  при открытии `/graphql`.
-- **П27 — RabbitMQ:** очередь `orders.notifications` с Dead Letter Queue.
-  Producer публикует уведомление о новом заказе из `orderController`,
-  два воркера (`worker-1`, `worker-2`) обрабатывают параллельно.
-  Retry до 3 попыток с экспоненциальной задержкой; после исчерпания —
-  сообщение уходит в DLQ. RabbitMQ Management UI: <http://localhost:15672>
-  (логин/пароль `guest`/`guest`).
-- **П28 — Финальный проект (E-commerce):** реализован полностью —
-  каталог, корзина, заказы, инвентарь, JWT+RBAC, Docker.
