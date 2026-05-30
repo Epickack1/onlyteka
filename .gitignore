@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build artefacts
+dist/
+build/
+**/dist/
+**/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment (секреты не коммитятся; шаблон лежит в .env.example)
+.env
+**/.env
+!**/.env.example
+
+# Локальные БД и кэши
+server/db/database.sqlite
+.vite/
+.cache/
+
+# Сертификаты HTTPS (генерируются локально через mkcert)
+certs/
+**/certs/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Архивы и скриншоты практик
+*.rar
+*.zip
+screenshots/
+
+# Локальные настройки Claude / агентов
+.claude/

@@ -1,0 +1,64 @@
+# docker-compose.dev.yml
+# Все базы данных для локальной разработки в Docker.
+# Сервер и клиент при этом запускаются локально (npm run dev),
+# а PostgreSQL, Redis, MongoDB и RabbitMQ крутятся в контейнерах.
+#
+#   Поднять всё:            docker compose -f docker-compose.dev.yml up -d
+#   Логи:                   docker compose -f docker-compose.dev.yml logs -f
+#   Остановить:             docker compose -f docker-compose.dev.yml down
+#   Остановить + стереть данные (Postgres/Mongo):
+#                           docker compose -f docker-compose.dev.yml down -v
+#
+# Можно поднимать выборочно, например только две базы:
+#   docker compose -f docker-compose.dev.yml up -d redis mongo
+#
+# Образы, порты и креды совпадают с основным docker-compose.yml и с server/.env.
+# Файл кладётся в корень проекта (рядом с docker-compose.yml).
+
+services:
+  # ─── PostgreSQL: товары, пользователи, заказы ────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: onlyteka-postgres
+    environment:
+      POSTGRES_DB: onlyteka          # = PG_DATABASE
+      POSTGRES_USER: postgres        # = PG_USER
+      POSTGRES_PASSWORD: postgres    # = PG_PASSWORD
+    ports:
+      - "5432:5432"                  # = PG_HOST=localhost / PG_PORT=5432
+    volumes:
+      - onlyteka_pg:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # ─── Redis: кэш каталога и пользователей ─────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: onlyteka-redis
+    ports:
+      - "6379:6379"                  # = REDIS_URL=redis://127.0.0.1:6379
+    restart: unless-stopped
+
+  # ─── MongoDB: отзывы ─────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: onlyteka-mongo
+    ports:
+      - "27017:27017"                # = mongodb://localhost:27017/onlyteka
+    volumes:
+      - onlyteka_mongo:/data/db
+    restart: unless-stopped
+
+  # ─── RabbitMQ: очередь уведомлений (практика 27) ─────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: onlyteka-rabbitmq
+    ports:
+      - "5672:5672"                  # AMQP  (= дефолтный amqp://127.0.0.1:5672)
+      - "15672:15672"                # web UI на http://localhost:15672 (guest/guest)
+    restart: unless-stopped
+
+# Постоянные тома: данные Postgres и отзывы Mongo переживают перезапуск.
+# Redis — кэш, RabbitMQ — транзитная очередь, персистентность им не нужна.
+volumes:
+  onlyteka_pg:
+  onlyteka_mongo:

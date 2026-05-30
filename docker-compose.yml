@@ -1,0 +1,146 @@
+# docker-compose.yml
+# Полный стек onlyteka:
+#   - client    : React SPA, раздаётся nginx-ом, проксирует /api и /socket.io
+#   - backend-1, backend-2 : Express + Socket.IO (за nginx-балансировщиком в client)
+#   - postgres  : основная БД (товары, пользователи)
+#   - mongo     : отзывы
+#   - redis     : кэш каталога и пользователей
+#
+# Запуск: docker compose up --build
+# Открыть: http://localhost
+
+services:
+  # ─── Frontend (React + nginx) — entrypoint всего стека ───────
+  client:
+    build: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-1
+      - backend-2
+    networks: [app-network]
+
+  # ─── Backend (2 инстанса для балансировки) ───────────────────
+  backend-1:
+    build: ./server
+    environment:
+      PORT: 3000
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: onlyteka
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      MONGO_URL: mongodb://mongo:27017/onlyteka
+      REDIS_URL: redis://redis:6379
+      RABBIT_URL: amqp://rabbitmq:5672
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ACCESS_EXPIRES_IN: ${ACCESS_EXPIRES_IN:-15m}
+      REFRESH_EXPIRES_IN: ${REFRESH_EXPIRES_IN:-7d}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+    depends_on:
+      - postgres
+      - redis
+      - mongo
+      - rabbitmq
+    networks: [app-network]
+
+  backend-2:
+    build: ./server
+    environment:
+      PORT: 3000
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: onlyteka
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      MONGO_URL: mongodb://mongo:27017/onlyteka
+      REDIS_URL: redis://redis:6379
+      RABBIT_URL: amqp://rabbitmq:5672
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ACCESS_EXPIRES_IN: ${ACCESS_EXPIRES_IN:-15m}
+      REFRESH_EXPIRES_IN: ${REFRESH_EXPIRES_IN:-7d}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+    depends_on:
+      - postgres
+      - redis
+      - mongo
+      - rabbitmq
+    networks: [app-network]
+
+  # ─── PostgreSQL (продукты, пользователи, заказы) ─────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: onlyteka
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks: [app-network]
+
+  # ─── Redis (кэш) ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks: [app-network]
+
+  # ─── MongoDB (отзывы) ────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    networks: [app-network]
+
+  # ─── RabbitMQ (практика 27) ──────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"        # AMQP
+      - "15672:15672"      # web UI (guest/guest)
+    networks: [app-network]
+
+  # ─── Воркеры очереди (2 инстанса для демонстрации балансировки) ─
+  worker-1:
+    build: ./server
+    command: node queue/worker.js
+    environment:
+      WORKER_ID: 1
+      RABBIT_URL: amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
+    networks: [app-network]
+
+  worker-2:
+    build: ./server
+    command: node queue/worker.js
+    environment:
+      WORKER_ID: 2
+      RABBIT_URL: amqp://rabbitmq:5672
+    depends_on:
+      - rabbitmq
+    networks: [app-network]
+
+volumes:
+  pg_data:
+  mongo_data:
+
+networks:
+  app-network:
+    driver: bridge
